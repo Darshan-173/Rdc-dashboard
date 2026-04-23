@@ -56,6 +56,65 @@ if uploaded_file:
     if value_col:
         df[value_col] = pd.to_numeric(df[value_col], errors='coerce')
 
+        # -------------------------------
+# Detect columns dynamically
+# -------------------------------
+date_col = find_column(df, ['date'])
+product_col = find_column(df, ['product', 'item'])
+customer_col = find_column(df, ['customer', 'party', 'company'])
+qty_col = find_column(df, ['qty', 'quantity'])
+value_col = find_column(df, ['amount', 'value', 'sales'])
+
+# -------------------------------
+# 🔥 ADD FILTERS HERE
+# -------------------------------
+st.sidebar.header("🔍 Filters")
+
+filtered_df = df.copy()
+
+# Product Filter
+if product_col:
+    products = df[product_col].dropna().unique()
+    selected_products = st.sidebar.multiselect(
+        "Select Product",
+        options=products,
+        default=products[:5]
+    )
+    if selected_products:
+        filtered_df = filtered_df[filtered_df[product_col].isin(selected_products)]
+
+# Customer Filter
+if customer_col:
+    customers = df[customer_col].dropna().unique()
+    selected_customers = st.sidebar.multiselect(
+        "Select Customer",
+        options=customers,
+        default=customers[:5]
+    )
+    if selected_customers:
+        filtered_df = filtered_df[filtered_df[customer_col].isin(selected_customers)]
+
+# Date Filter
+if date_col:
+    min_date = df[date_col].min()
+    max_date = df[date_col].max()
+
+    selected_dates = st.sidebar.date_input(
+        "Select Date Range",
+        [min_date, max_date]
+    )
+
+    if len(selected_dates) == 2:
+        filtered_df = filtered_df[
+            (filtered_df[date_col] >= pd.to_datetime(selected_dates[0])) &
+            (filtered_df[date_col] <= pd.to_datetime(selected_dates[1]))
+        ]
+
+
+# -------------------------------
+# KPIs (USE filtered_df)
+# -------------------------------
+
     # -------------------------------
     # KPIs
     # -------------------------------
