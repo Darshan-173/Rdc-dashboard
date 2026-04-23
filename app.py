@@ -172,7 +172,7 @@ if uploaded_file:
 
         st.plotly_chart(fig4, use_container_width=True)
 
-    # -------------------------------
+       # -------------------------------
     # Download
     # -------------------------------
     st.markdown("---")
@@ -184,50 +184,51 @@ if uploaded_file:
         "filtered_data.csv",
         "text/csv"
     )
- # -------------------------------
-# 🧠 SMART INSIGHTS
-# -------------------------------
-st.markdown("---")
-st.subheader("🧠 Smart Insights")
 
-col1, col2 = st.columns(2)
+    # -------------------------------
+    # 🧠 SMART INSIGHTS  ✅ (MOVED INSIDE BLOCK)
+    # -------------------------------
+    st.markdown("---")
+    st.subheader("🧠 Smart Insights")
 
-# Top Product
-if product_col and value_col:
-    top_product = (
-        filtered_df.groupby(product_col)[value_col]
-        .sum()
-        .sort_values(ascending=False)
-        .idxmax()
-    )
-    with col1:
-        st.success(f"🥇 Top Product: {top_product}")
+    col1, col2 = st.columns(2)
 
-# Top Customer
-if customer_col and value_col:
-    top_customer = (
-        filtered_df.groupby(customer_col)[value_col]
-        .sum()
-        .sort_values(ascending=False)
-        .idxmax()
-    )
-    with col2:
-        st.success(f"👑 Top Customer: {top_customer}")
+    # Top Product
+    if product_col and value_col:
+        top_product = (
+            filtered_df.groupby(product_col)[value_col]
+            .sum()
+            .sort_values(ascending=False)
+            .idxmax()
+        )
+        with col1:
+            st.success(f"🥇 Top Product: {top_product}")
 
-# Best Month
-if date_col and value_col:
-    best_month = (
-        filtered_df.groupby('Month')[value_col]
-        .sum()
-        .sort_values(ascending=False)
-        .idxmax()
-    )
-    st.info(f"📅 Best Sales Month: {best_month}")
+    # Top Customer
+    if customer_col and value_col:
+        top_customer = (
+            filtered_df.groupby(customer_col)[value_col]
+            .sum()
+            .sort_values(ascending=False)
+            .idxmax()
+        )
+        with col2:
+            st.success(f"👑 Top Customer: {top_customer}")
 
-# Average Order Value
-if value_col and customer_col:
-    avg_order = filtered_df[value_col].sum() / filtered_df[customer_col].nunique()
-    st.info(f"💰 Avg Order Value: ₹{avg_order:,.0f}")
+    # Best Month
+    if date_col and value_col:
+        best_month = (
+            filtered_df.groupby('Month')[value_col]
+            .sum()
+            .sort_values(ascending=False)
+            .idxmax()
+        )
+        st.info(f"📅 Best Sales Month: {best_month}")
+
+    # Average Order Value
+    if value_col and customer_col:
+        avg_order = filtered_df[value_col].sum() / filtered_df[customer_col].nunique()
+        st.info(f"💰 Avg Order Value: ₹{avg_order:,.0f}")
 
 else:
     st.info("Upload a file to generate dashboard")
