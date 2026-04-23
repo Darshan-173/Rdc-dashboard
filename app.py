@@ -63,7 +63,7 @@ if uploaded_file:
         df[value_col] = pd.to_numeric(df[value_col], errors='coerce')
 
     # -------------------------------
-    # 🔥 FILTERS
+    # FILTERS
     # -------------------------------
     st.sidebar.header("🔍 Filters")
 
@@ -110,29 +110,67 @@ if uploaded_file:
     st.markdown("---")
 
     # -------------------------------
-    # Charts
+    # Charts (Better Layout)
     # -------------------------------
+    col1, col2 = st.columns(2)
 
+    # Top Products
     if product_col and value_col:
-        st.subheader("📦 Top Products")
-        top_products = filtered_df.groupby(product_col)[value_col].sum().sort_values(ascending=False).head(10)
+        with col1:
+            st.subheader("📦 Top Products")
+            top_products = filtered_df.groupby(product_col)[value_col].sum().sort_values(ascending=False).head(10)
 
-        fig = px.bar(x=top_products.values, y=top_products.index, orientation='h')
-        st.plotly_chart(fig, use_container_width=True)
+            fig = px.bar(
+                x=top_products.values,
+                y=top_products.index,
+                orientation='h',
+                color=top_products.values,
+                color_continuous_scale='Blues'
+            )
+            st.plotly_chart(fig, use_container_width=True)
 
+    # Top Customers
     if customer_col and value_col:
-        st.subheader("👥 Top Customers")
-        top_customers = filtered_df.groupby(customer_col)[value_col].sum().sort_values(ascending=False).head(10)
+        with col2:
+            st.subheader("👥 Top Customers")
+            top_customers = filtered_df.groupby(customer_col)[value_col].sum().sort_values(ascending=False).head(10)
 
-        fig2 = px.bar(x=top_customers.values, y=top_customers.index, orientation='h')
-        st.plotly_chart(fig2, use_container_width=True)
+            fig2 = px.bar(
+                x=top_customers.values,
+                y=top_customers.index,
+                orientation='h',
+                color=top_customers.values,
+                color_continuous_scale='Greens'
+            )
+            st.plotly_chart(fig2, use_container_width=True)
 
+    # Monthly Trend
     if date_col and value_col:
-        st.subheader("📈 Monthly Trend")
+        st.subheader("📈 Monthly Sales Trend")
+
         monthly = filtered_df.groupby('Month')[value_col].sum().reset_index()
 
-        fig3 = px.line(monthly, x='Month', y=value_col, markers=True)
+        fig3 = px.line(
+            monthly,
+            x='Month',
+            y=value_col,
+            markers=True
+        )
+
+        fig3.update_layout(xaxis_tickangle=45)
         st.plotly_chart(fig3, use_container_width=True)
+
+    # Distribution
+    if value_col:
+        st.subheader("💰 Sales Distribution")
+
+        fig4 = px.histogram(
+            filtered_df,
+            x=value_col,
+            nbins=30
+        )
+
+        st.plotly_chart(fig4, use_container_width=True)
 
     # -------------------------------
     # Download
