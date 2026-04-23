@@ -2,80 +2,133 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 
-# Page config
-st.set_page_config(
-    page_title="Sales Dashboard",
-    page_icon="📊",
-    layout="wide"
-)
+st.set_page_config(page_title="Smart Sales Dashboard", layout="wide")
 
-st.title("📊 Tally Sales Dashboard")
-st.write("App started successfully ✅")
+st.title("📊 Smart Dynamic Sales Dashboard")
+st.write("Adaptive dashboard based on uploaded data ✅")
 
-# Load data safely
+# -------------------------------
+# Helper: Find matching column
+# -------------------------------
+def find_column(df, possible_names):
+    for col in df.columns:
+        for name in possible_names:
+            if name.lower() in col.lower():
+                return col
+    return None
+
+# -------------------------------
+# Load Data
+# -------------------------------
 @st.cache_data
 def load_data(file):
-    try:
-        if file.name.endswith('.csv'):
-            df = pd.read_csv(file)
-        else:
-            df = pd.read_excel(file)
+    if file.name.endswith('.csv'):
+        return pd.read_csv(file)
+    else:
+        return pd.read_excel(file)
 
-        # Required columns check
-        required_cols = ['Date', 'Product Name', 'Company Name (Customer)', 'Quantity Sold', 'Sales Value']
-        missing = [col for col in required_cols if col not in df.columns]
-
-        if missing:
-            st.error(f"Missing columns: {missing}")
-            st.stop()
-
-        df['Date'] = pd.to_datetime(df['Date'], errors='coerce')
-        df['Month'] = df['Date'].dt.strftime('%Y-%m')
-
-        df['Quantity Sold'] = pd.to_numeric(df['Quantity Sold'], errors='coerce')
-        df['Sales Value'] = pd.to_numeric(df['Sales Value'], errors='coerce')
-
-        return df
-
-    except Exception as e:
-        st.error(f"Error loading file: {e}")
-        st.stop()
-
-# Upload file
-uploaded_file = st.file_uploader("Upload Excel/CSV", type=['xlsx', 'csv'])
+uploaded_file = st.file_uploader("Upload your file", type=['csv', 'xlsx'])
 
 if uploaded_file:
     df = load_data(uploaded_file)
+    st.success("File uploaded successfully ✅")
 
-    st.success("Data loaded successfully ✅")
+    st.write("### 🔍 Detected Columns:")
+    st.write(df.columns.tolist())
 
+    # -------------------------------
+    # Detect columns dynamically
+    # -------------------------------
+    date_col = find_column(df, ['date'])
+    product_col = find_column(df, ['product', 'item'])
+    customer_col = find_column(df, ['customer', 'party', 'company'])
+    qty_col = find_column(df, ['qty', 'quantity'])
+    value_col = find_column(df, ['amount', 'value', 'sales'])
+
+    # Convert safely
+    if date_col:
+        df[date_col] = pd.to_datetime(df[date_col], errors='coerce')
+        df['Month'] = df[date_col].dt.strftime('%Y-%m')
+
+    if qty_col:
+        df[qty_col] = pd.to_numeric(df[qty_col], errors='coerce')
+
+    if value_col:
+        df[value_col] = pd.to_numeric(df[value_col], errors='coerce')
+
+    # -------------------------------
     # KPIs
+    # -------------------------------
+    st.markdown("## 📊 Key Metrics")
+
     col1, col2, col3 = st.columns(3)
 
-    col1.metric("Total Sales", f"₹{df['Sales Value'].sum():,.0f}")
-    col2.metric("Total Quantity", f"{df['Quantity Sold'].sum():,.0f}")
-    col3.metric("Customers", df['Company Name (Customer)'].nunique())
+    if value_col:
+        col1.metric("Total Sales", f"₹{df[value_col].sum():,.0f}")
+    if qty_col:
+        col2.metric("Total Quantity", f"{df[qty_col].sum():,.0f}")
+    if customer_col:
+        col3.metric("Customers", df[customer_col].nunique())
 
     st.markdown("---")
 
+    # -------------------------------
+    # Dynamic Charts
+    # -------------------------------
+
     # Top Products
-    top_products = df.groupby('Product Name')['Sales Value'].sum().sort_values(ascending=False).head(10)
+    if product_col and value_col:
+        st.subheader("📦 Top Products")
+        top_products = df.groupby(product_col)[value_col].sum().sort_values(ascending=False).head(10)
 
-    fig = px.bar(
-        x=top_products.values,
-        y=top_products.index,
-        orientation='h',
-        title="Top Products"
-    )
+        fig = px.bar(
+            x=top_products.values,
+            y=top_products.index,
+            orientation='h',
+            title="Top Products"
+        )
+        st.plotly_chart(fig, use_container_width=True)
 
-    st.plotly_chart(fig, use_container_width=True)
+    # Top Customers
+    if customer_col and value_col:
+        st.subheader("👥 Top Customers")
+        top_customers = df.groupby(customer_col)[value_col].sum().sort_values(ascending=False).head(10)
+
+        fig2 = px.bar(
+            x=top_customers.values,
+            y=top_customers.index,
+            orientation='h',
+            title="Top Customers"
+        )
+        st.plotly_chart(fig2, use_container_width=True)
 
     # Monthly Trend
-    monthly = df.groupby('Month')['Sales Value'].sum().reset_index()
+    if date_col and value_col:
+        st.subheader("📈 Monthly Trend")
+        monthly = df.groupby('Month')[value_col].sum().reset_index()
 
-    fig2 = px.line(monthly, x='Month', y='Sales Value', markers=True)
+        fig3 = px.line(monthly, x='Month', y=value_col, markers=True)
+        st.plotly_chart(fig3, use_container_width=True)
 
-    st.plotly_chart(fig2, use_container_width=True)
+    # -------------------------------
+    # Download Section
+    # -------------------------------
+    st.markdown("---")
+    st.subheader("⬇️ Download Data")
+
+    st.download_button(
+        "Download Full Data (CSV)",
+        df.to_csv(index=False),
+        file_name="full_data.csv",
+        mime="text/csv"
+    )
+
+    st.download_button(
+        "Download Summary (CSV)",
+        df.describe().to_csv(),
+        file_name="summary.csv",
+        mime="text/csv"
+    )
 
 else:
-    st.info("Please upload a file to start")
+    st.info("Upload a file to generate dashboard")
