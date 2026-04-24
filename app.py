@@ -180,6 +180,40 @@ if uploaded_file:
             best_month = filtered_df.groupby('Month')[qty_col].sum().idxmax()
             st.info(f"📅 Best Month: {best_month}")
 
+    # ---------------------------------------
+    # inactive customer alert feature
+    # ---------------------------------------
+
+    st.markdown("---")
+    st.subheader("⚠️ Inactive Customers Alert")
+
+    if customer_col and date_col and qty_col:
+    
+    # Use FULL DATA (df) instead of filtered_df
+    last_purchase = (
+        df.groupby(customer_col)[date_col]
+        .max()
+        .reset_index()
+    )
+
+    today = pd.to_datetime("today")
+
+    last_purchase["Days Since Last Purchase"] = (
+        today - last_purchase[date_col]
+    ).dt.days
+
+    # Threshold (you can change anytime)
+    threshold = 30  
+
+    inactive_customers = last_purchase[
+        last_purchase["Days Since Last Purchase"] > threshold
+    ]
+
+    if not inactive_customers.empty:
+        st.error(f"{len(inactive_customers)} customers inactive > {threshold} days")
+        st.dataframe(inactive_customers.sort_values(by="Days Since Last Purchase", ascending=False))
+    else:
+        st.success("No inactive customers 🎉")
     # -------------------------------
     # Download
     # -------------------------------
