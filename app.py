@@ -42,14 +42,11 @@ if uploaded_file:
     st.write("### 🔍 Detected Columns:")
     st.write(df.columns.tolist())
 
-    # -------------------------------
     # Detect columns
-    # -------------------------------
     date_col = find_column(df, ['date'])
-    product_col = find_column(df, ['product', 'item'])
-    customer_col = find_column(df, ['customer', 'party', 'company'])
+    product_col = find_column(df, ['product'])
+    customer_col = find_column(df, ['customer'])
     qty_col = find_column(df, ['qty', 'quantity'])
-    value_col = find_column(df, ['amount', 'value', 'sales'])
 
     # Convert
     if date_col:
@@ -58,9 +55,6 @@ if uploaded_file:
 
     if qty_col:
         df[qty_col] = pd.to_numeric(df[qty_col], errors='coerce')
-
-    if value_col:
-        df[value_col] = pd.to_numeric(df[value_col], errors='coerce')
 
     # -------------------------------
     # FILTERS
@@ -71,13 +65,13 @@ if uploaded_file:
 
     if product_col:
         products = df[product_col].dropna().unique()
-        selected_products = st.sidebar.multiselect("Product", products, default=products[:5])
+        selected_products = st.sidebar.multiselect("Product", products, default=products)
         if selected_products:
             filtered_df = filtered_df[filtered_df[product_col].isin(selected_products)]
 
     if customer_col:
         customers = df[customer_col].dropna().unique()
-        selected_customers = st.sidebar.multiselect("Customer", customers, default=customers[:5])
+        selected_customers = st.sidebar.multiselect("Customer", customers, default=customers)
         if selected_customers:
             filtered_df = filtered_df[filtered_df[customer_col].isin(selected_customers)]
 
@@ -94,85 +88,86 @@ if uploaded_file:
             ]
 
     # -------------------------------
-    # KPIs
+    # KPIs (Quantity Based)
     # -------------------------------
     st.markdown("## 📊 Key Metrics")
 
     col1, col2, col3 = st.columns(3)
 
-    if value_col:
-        col1.metric("Total Sales", f"₹{filtered_df[value_col].sum():,.0f}")
     if qty_col:
-        col2.metric("Total Quantity", f"{filtered_df[qty_col].sum():,.0f}")
+        col1.metric("Total Quantity (KG)", f"{filtered_df[qty_col].sum():,.0f}")
+
+    if product_col:
+        col2.metric("Total Products", filtered_df[product_col].nunique())
+
     if customer_col:
         col3.metric("Customers", filtered_df[customer_col].nunique())
 
     st.markdown("---")
 
     # -------------------------------
-    # Charts (Better Layout)
+    # Charts
     # -------------------------------
     col1, col2 = st.columns(2)
 
     # Top Products
-    if product_col and value_col:
+    if product_col and qty_col:
         with col1:
-            st.subheader("📦 Top Products")
-            top_products = filtered_df.groupby(product_col)[value_col].sum().sort_values(ascending=False).head(10)
+            st.subheader("📦 Top Products (by KG)")
+            top_products = filtered_df.groupby(product_col)[qty_col].sum().sort_values(ascending=False).head(10)
 
             fig = px.bar(
                 x=top_products.values,
                 y=top_products.index,
-                orientation='h',
-                color=top_products.values,
-                color_continuous_scale='Blues'
+                orientation='h'
             )
             st.plotly_chart(fig, use_container_width=True)
 
     # Top Customers
-    if customer_col and value_col:
+    if customer_col and qty_col:
         with col2:
-            st.subheader("👥 Top Customers")
-            top_customers = filtered_df.groupby(customer_col)[value_col].sum().sort_values(ascending=False).head(10)
+            st.subheader("👥 Top Customers (by KG)")
+            top_customers = filtered_df.groupby(customer_col)[qty_col].sum().sort_values(ascending=False).head(10)
 
             fig2 = px.bar(
                 x=top_customers.values,
                 y=top_customers.index,
-                orientation='h',
-                color=top_customers.values,
-                color_continuous_scale='Greens'
+                orientation='h'
             )
             st.plotly_chart(fig2, use_container_width=True)
 
     # Monthly Trend
-    if date_col and value_col:
-        st.subheader("📈 Monthly Sales Trend")
+    if date_col and qty_col:
+        st.subheader("📈 Monthly Quantity Trend")
 
-        monthly = filtered_df.groupby('Month')[value_col].sum().reset_index()
+        monthly = filtered_df.groupby('Month')[qty_col].sum().reset_index()
 
-        fig3 = px.line(
-            monthly,
-            x='Month',
-            y=value_col,
-            markers=True
-        )
-
-        fig3.update_layout(xaxis_tickangle=45)
+        fig3 = px.line(monthly, x='Month', y=qty_col, markers=True)
         st.plotly_chart(fig3, use_container_width=True)
 
-    # Distribution
-    if value_col:
-        st.subheader("💰 Sales Distribution")
+    # -------------------------------
+    # SMART INSIGHTS (Quantity Based)
+    # -------------------------------
+    st.markdown("---")
+    st.subheader("🧠 Smart Insights")
 
-        fig4 = px.histogram(
-            filtered_df,
-            x=value_col,
-            nbins=30
-        )
+    col1, col2 = st.columns(2)
 
-        st.plotly_chart(fig4, use_container_width=True)
+    if product_col and qty_col:
+        top_product = filtered_df.groupby(product_col)[qty_col].sum().idxmax()
+        with col1:
+            st.success(f"🥇 Top Product: {top_product}")
 
-       # -------------------------------
+    if customer_col and qty_col:
+        top_customer = filtered_df.groupby(customer_col)[qty_col].sum().idxmax()
+        with col2:
+            st.success(f"👑 Top Customer: {top_customer}")
+
+    if date_col and qty_col:
+        best_month = filtered_df.groupby('Month')[qty_col].sum().idxmax()
+        st.info(f"📅 Best Month: {best_month}")
+
+    # -------------------------------
     # Download
     # -------------------------------
     st.markdown("---")
@@ -184,51 +179,6 @@ if uploaded_file:
         "filtered_data.csv",
         "text/csv"
     )
-
-    # -------------------------------
-    # 🧠 SMART INSIGHTS  ✅ (MOVED INSIDE BLOCK)
-    # -------------------------------
-    st.markdown("---")
-    st.subheader("🧠 Smart Insights")
-
-    col1, col2 = st.columns(2)
-
-    # Top Product
-    if product_col and value_col:
-        top_product = (
-            filtered_df.groupby(product_col)[value_col]
-            .sum()
-            .sort_values(ascending=False)
-            .idxmax()
-        )
-        with col1:
-            st.success(f"🥇 Top Product: {top_product}")
-
-    # Top Customer
-    if customer_col and value_col:
-        top_customer = (
-            filtered_df.groupby(customer_col)[value_col]
-            .sum()
-            .sort_values(ascending=False)
-            .idxmax()
-        )
-        with col2:
-            st.success(f"👑 Top Customer: {top_customer}")
-
-    # Best Month
-    if date_col and value_col:
-        best_month = (
-            filtered_df.groupby('Month')[value_col]
-            .sum()
-            .sort_values(ascending=False)
-            .idxmax()
-        )
-        st.info(f"📅 Best Sales Month: {best_month}")
-
-    # Average Order Value
-    if value_col and customer_col:
-        avg_order = filtered_df[value_col].sum() / filtered_df[customer_col].nunique()
-        st.info(f"💰 Avg Order Value: ₹{avg_order:,.0f}")
 
 else:
     st.info("Upload a file to generate dashboard")
