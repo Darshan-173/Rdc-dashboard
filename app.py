@@ -1,3 +1,6 @@
+import os
+os.environ["STREAMLIT_DISABLE_ARROW"] = "1"
+
 import streamlit as st
 import pandas as pd
 import plotly.express as px
@@ -36,14 +39,14 @@ uploaded_file = st.file_uploader("Upload your file", type=['csv', 'xlsx'])
 # MAIN APP
 # -------------------------------
 if uploaded_file:
+
     df = load_data(uploaded_file)
 
     # Clean column names
     df.columns = df.columns.str.strip()
 
     st.success("File uploaded successfully ✅")
-    st.text("Detected Columns:")
-    st.text(str(df.columns.tolist()))
+    st.text(f"Detected Columns: {', '.join(df.columns)}")
 
     # Detect columns
     date_col = find_column(df, ['date'])
@@ -158,7 +161,7 @@ if uploaded_file:
             st.info(f"📅 Best Month: {best_month}")
 
     # -------------------------------
-    # PATTERN-BASED CUSTOMER ANALYSIS
+    # PATTERN ANALYSIS (FIXED SCOPE)
     # -------------------------------
     st.markdown("---")
     st.subheader("⚠️ Pattern-Aware Inactive Customers Alert")
@@ -197,19 +200,20 @@ if uploaded_file:
 
         pattern_df["Status"] = pattern_df.apply(risk_flag, axis=1)
 
+        # Clean formatting
+        pattern_df["AvgGapDays"] = pattern_df["AvgGapDays"].round(0)
+        pattern_df["LastPurchase"] = pattern_df["LastPurchase"].dt.date
+        pattern_df["ExpectedNextPurchase"] = pattern_df["ExpectedNextPurchase"].dt.date
+
         # Summary
-        summary = pattern_df["Status"].value_counts()
-        st.text("Customer Status Summary")
-        summary_df = summary.to_frame(name="Count")
-        st.text(summary_df.to_string())
+        st.markdown("### 📊 Customer Status Summary")
+        summary_df = pattern_df["Status"].value_counts().reset_index()
+        summary_df.columns = ["Status", "Count"]
+        st.dataframe(summary_df, use_container_width=True)
 
-        # Table
-        st.text("Customer Details")
-
-        if pattern_df.empty:
-            st.success("No customers detected 🎉")
-        else:
-            st.text(pattern_df.sort_values("DaysOverdue", ascending=False).to_string())
+        # Details
+        st.markdown("### 📋 Customer Details")
+        st.dataframe(pattern_df.sort_values("DaysOverdue", ascending=False), use_container_width=True)
 
     # -------------------------------
     # Download
